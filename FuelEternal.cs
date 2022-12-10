@@ -2,6 +2,7 @@
 using BepInEx.Configuration;
 using HarmonyLib;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 
 namespace FuelEternal
@@ -10,7 +11,7 @@ namespace FuelEternal
     {
         public const string Name = "FuelEternal";
         public const string Guid = "Marfinator." + Name;
-        public const string Version = "1.1.0";
+        public const string Version = "1.2.0";
     }
 
     [BepInPlugin(PluginInfo.Guid, PluginInfo.Name, PluginInfo.Version)]
@@ -33,6 +34,7 @@ namespace FuelEternal
         private static ConfigEntry<bool> fe_piece_oven;
         private static ConfigEntry<bool> fe_smelter;
         private static ConfigEntry<bool> fe_blastfurnace;
+        private static ConfigEntry<bool> fe_eitrrefinery;
         private static ConfigEntry<bool> fe_piece_bathtub;
         private static ConfigEntry<string> fe_custom_instance;
 
@@ -53,6 +55,7 @@ namespace FuelEternal
             fe_piece_bathtub = Config.Bind<bool>("Smelters", "AllowHotTub", true, "Allow eternal fuel for Hot tub");
             fe_smelter = Config.Bind<bool>("Smelters", "AllowSmelter", false, "Allow eternal fuel for Smelter");
             fe_blastfurnace = Config.Bind<bool>("Smelters", "AllowBlastFurnace", false, "Allow eternal fuel for Blast furnace");
+            fe_eitrrefinery = Config.Bind<bool>("Smelters", "AllowEitrRefinery", false, "Allow eternal fuel for Eitr refinery");
             fe_custom_instance = Config.Bind<string>("Custom", "CustomItems", "", "Enable Fuel Eternal to manage fuel for custom items added by other mods, comma-separated no spaces (e.g. \"rk_campfire,rk_hearth,rk_brazier\" )");
 
             harmony.PatchAll();
@@ -110,6 +113,9 @@ namespace FuelEternal
                 case "blastfurnace(Clone)":
                     EternalFuel = fe_blastfurnace.Value;
                     break;
+                case "eitrrefinery(Clone)":
+                    EternalFuel = fe_eitrrefinery.Value;
+                    break;
                 case "piece_bathtub(Clone)":
                     EternalFuel = fe_piece_bathtub.Value;
                     break;
@@ -131,7 +137,7 @@ namespace FuelEternal
             {
                 if (ConfigCheck(__instance.name))
                     ___m_nview.GetZDO().Set("fuel", __instance.m_maxFuel);
-            }   
+            }
         }
 
         [HarmonyPatch]
@@ -168,8 +174,11 @@ namespace FuelEternal
             [HarmonyPostfix]
             static void CookingStation_Awake(CookingStation __instance, ref ZNetView ___m_nview)
             {
-                if (ConfigCheck(__instance.name) && !(___m_nview == null) && ___m_nview.GetZDO() != null)
-                    ___m_nview.InvokeRPC("AddFuel");
+                if (!___m_nview.isActiveAndEnabled || Player.m_localPlayer == null || Player.m_localPlayer.IsTeleporting())
+                    return;
+
+                if (ConfigCheck(__instance.name))
+                    Refuel(___m_nview);
             }
         }
 
@@ -181,9 +190,19 @@ namespace FuelEternal
             [HarmonyPostfix]
             static void Smelter_Awake(Smelter __instance, ref ZNetView ___m_nview)
             {
-                if (ConfigCheck(__instance.name) && !(___m_nview == null) && ___m_nview.GetZDO() != null)
-                        ___m_nview.InvokeRPC("AddFuel");
+                if (!___m_nview.isActiveAndEnabled || Player.m_localPlayer == null || Player.m_localPlayer.IsTeleporting())
+                    return;
+
+                if (ConfigCheck(__instance.name))
+                    Refuel(___m_nview);
             }
         }
+
+        public static async void Refuel(ZNetView znview)
+        {
+            await Task.Delay(33);
+            znview.InvokeRPC("AddFuel");
+        }
+
     }
 }
