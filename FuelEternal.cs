@@ -11,11 +11,10 @@ namespace FuelEternal
     {
         public const string Name = "FuelEternal";
         public const string Guid = "Marfinator." + Name;
-        public const string Version = "1.2.0";
+        public const string Version = "1.2.1";
     }
 
     [BepInPlugin(PluginInfo.Guid, PluginInfo.Name, PluginInfo.Version)]
-    [BepInProcess("valheim.exe")]
 
     public class FuelEternal : BaseUnityPlugin
     {
@@ -125,6 +124,15 @@ namespace FuelEternal
             return EternalFuel;
         }
 
+        public static async void Refuel(ZNetView ___m_nview)
+        {
+            if (___m_nview == null || !___m_nview.isActiveAndEnabled)
+                return;
+
+            await Task.Delay(33);
+
+            ___m_nview.InvokeRPC("AddFuel");
+        }
 
         /*********************************************-Harmony Patches-*********************************************/
         [HarmonyPatch]
@@ -174,7 +182,7 @@ namespace FuelEternal
             [HarmonyPostfix]
             static void CookingStation_Awake(CookingStation __instance, ref ZNetView ___m_nview)
             {
-                if (!___m_nview.isActiveAndEnabled || Player.m_localPlayer == null || Player.m_localPlayer.IsTeleporting())
+                if (Player.m_localPlayer == null || Player.m_localPlayer.IsTeleporting())
                     return;
 
                 if (ConfigCheck(__instance.name))
@@ -190,19 +198,12 @@ namespace FuelEternal
             [HarmonyPostfix]
             static void Smelter_Awake(Smelter __instance, ref ZNetView ___m_nview)
             {
-                if (!___m_nview.isActiveAndEnabled || Player.m_localPlayer == null || Player.m_localPlayer.IsTeleporting())
+                if (Player.m_localPlayer == null || Player.m_localPlayer.IsTeleporting())
                     return;
 
                 if (ConfigCheck(__instance.name))
                     Refuel(___m_nview);
             }
         }
-
-        public static async void Refuel(ZNetView znview)
-        {
-            await Task.Delay(33);
-            znview.InvokeRPC("AddFuel");
-        }
-
     }
 }
